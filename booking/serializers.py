@@ -98,13 +98,15 @@ class GuestCreateUpdateSerializer(serializers.ModelSerializer):
             'documents', 'phone', 'email', 'date_of_birth', 'gender',
             'blacklisted', 'blacklist_reason', 'notes'
         ]
-    
+        
     def validate_phone(self, value):
-        """Валидация телефона"""
-        instance = self.instance
-        if Guest.objects.filter(phone=value).exclude(pk=instance.pk if instance else None).exists():
-            raise serializers.ValidationError("Гость с таким номером телефона уже существует")
-        return value
+        """Валидация телефона - разрешаем пустые и дубликаты"""
+        # Если телефон пустой - пропускаем
+        if not value or value.strip() == '':
+            return value
+        
+        # Разрешаем дубликаты телефонов (не проверяем уникальность)
+        return value    
     
     def validate(self, data):
         """Комплексная валидация"""
@@ -335,6 +337,7 @@ class BookingCardDetailSerializer(serializers.ModelSerializer):
     goods_list = serializers.SerializerMethodField(read_only=True)
     services_list = serializers.SerializerMethodField(read_only=True)
     
+    
     class Meta:
         model = BookingCard
         fields = '__all__'
@@ -351,15 +354,30 @@ class BookingCardDetailSerializer(serializers.ModelSerializer):
             {'id': s.id, 'name': s.name, 'price': s.price}
             for s in obj.services.all()
         ]
+    
+
 
 
 class BookingCardCreateUpdateSerializer(serializers.ModelSerializer):
     """Создание/обновление карточки бронирования"""
-
-
+    
     class Meta:
         model = BookingCard
         fields = [
             'primary_guest', 'bookings', 'goods',
             'services', 'status', 'total_amount'
         ]
+    
+    def validate(self, data):
+        """Валидация данных"""
+        if not data.get('primary_guest'):
+            raise serializers.ValidationError({
+                'primary_guest': 'Необходимо указать основного гостя'
+            })
+        
+        if not data.get('bookings'):
+            raise serializers.ValidationError({
+                'bookings': 'Необходимо добавить хотя бы одно бронирование'
+            })
+        
+        return data

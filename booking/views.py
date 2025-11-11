@@ -316,7 +316,21 @@ class BookingViewSet(viewsets.ModelViewSet):
         operation_description="Создать новое бронирование"
     )
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        """Создать новое бронирование - возвращает полные данные с ID"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        
+        # После создания возвращаем полные данные через BookingDetailSerializer
+        instance = serializer.instance
+        detail_serializer = BookingDetailSerializer(instance)
+        
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            detail_serializer.data,  # ✅ Теперь включает id и все read_only поля
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
     
     @swagger_auto_schema(
         operation_summary="Активные бронирования",
